@@ -8,6 +8,7 @@ _DEFAULTS = {
         "tools": {},
         "cash_balance": 100000.0,
     },
+    "races": {},
 }
 
 _STORE = copy.deepcopy(_DEFAULTS)
