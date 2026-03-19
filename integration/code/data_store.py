@@ -2,6 +2,12 @@ import copy
  
 _DEFAULTS = {
     "members": {},
+    "inventory": {
+        "cars": {},
+        "spare_parts": {},
+        "tools": {},
+        "cash_balance": 100000.0,
+    },
 }
 
 _STORE = copy.deepcopy(_DEFAULTS)
