@@ -12,6 +12,7 @@ _DEFAULTS = {
     "results": {},
     "missions": {},
     "leaderboard": {},
+    "vehicle_condition": {},
 }
 
 _STORE = copy.deepcopy(_DEFAULTS)
