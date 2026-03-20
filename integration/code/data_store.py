@@ -11,6 +11,7 @@ _DEFAULTS = {
     "races": {},
     "results": {},
     "missions": {},
+    "leaderboard": {},
 }
 
 _STORE = copy.deepcopy(_DEFAULTS)

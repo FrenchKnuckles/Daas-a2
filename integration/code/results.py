@@ -3,6 +3,7 @@ from data_store import load, save
 from race_management import get_race
 from crew_management import set_availability
 from inventory import add_cash, set_car_condition
+from leaderboard import update_leaderboard
 
 PLACE_PRIZE_MULTIPLIERS = {1: 1.0, 2: 0.5, 3: 0.25}   # fraction of prize_pool per place
 
@@ -71,6 +72,10 @@ def record_result( race_id: str,finishing_order: list, # list of member_ids, ind
     results = load("results")
     results[result_id] = result
     save("results", results)
+
+    # Update leaderboard
+    update_leaderboard(finishing_order, payouts)
+
     return result
 
 def get_result(result_id: str) -> dict:
