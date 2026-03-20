@@ -9,6 +9,7 @@ _DEFAULTS = {
         "cash_balance": 100000.0,
     },
     "races": {},
+    "results": {},
 }
 
 _STORE = copy.deepcopy(_DEFAULTS)
