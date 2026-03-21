@@ -1,3 +1,5 @@
+"""Game session flow and turn resolution"""
+
 import os
 
 from moneypoly.config import (

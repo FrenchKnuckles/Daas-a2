@@ -1,3 +1,5 @@
+"""Player state and actions"""
+
 import sys
 from moneypoly.config import STARTING_BALANCE, BOARD_SIZE, GO_SALARY, JAIL_POSITION
 

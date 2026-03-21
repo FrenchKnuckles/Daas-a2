@@ -1,3 +1,5 @@
+"""Console UI helpers for displaying and collecting game information"""
+
 def print_banner(title):
     """Print a decorated section header."""
     width = 52

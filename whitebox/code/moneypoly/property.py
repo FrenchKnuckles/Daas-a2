@@ -1,3 +1,5 @@
+"""Property and property-group models"""
+
 class Property:
     """Represents a single purchasable property tile on the MoneyPoly board."""
 
@@ -62,6 +64,8 @@ class Property:
 
 
 class PropertyGroup:
+    """Represents a color group and tracks properties within it."""
+
     def __init__(self, name, color):
         self.name = name
         self.color = color

@@ -1,3 +1,5 @@
+"""Dice rolling logic for turns"""
+
 import random
 from moneypoly.config import BOARD_SIZE
 

@@ -1,3 +1,5 @@
+"""Card definitions and deck behavior """
+
 import random
 
 CHANCE_CARDS = [

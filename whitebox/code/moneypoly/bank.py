@@ -1,8 +1,11 @@
+"""Bank operations for MoneyPoly"""
+
 import math
 from moneypoly.config import BANK_STARTING_FUNDS
 
-
 class Bank:
+    """Tracks funds, collections, payouts, and loans"""
+
     def __init__(self):
         self._funds = BANK_STARTING_FUNDS
         self._loans_issued = []
