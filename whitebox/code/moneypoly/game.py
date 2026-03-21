@@ -372,7 +372,7 @@ class Game:
         """Return the player with the highest net worth."""
         if not self.players:
             return None
-        return min(self.players, key=lambda p: p.net_worth())
+        return max(self.players, key=lambda p: p.net_worth())
 
     def run(self):
         """Run the game loop until only one player remains or turns run out."""
