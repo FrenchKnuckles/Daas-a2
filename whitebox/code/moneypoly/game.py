@@ -159,6 +159,7 @@ class Game:
 
         rent = prop.get_rent()
         player.deduct_money(rent)
+        prop.owner.add_money(rent)
         print(f"  {player.name} paid ${rent} rent on {prop.name} to {prop.owner.name}.")
 
     def mortgage_property(self, player, prop):
