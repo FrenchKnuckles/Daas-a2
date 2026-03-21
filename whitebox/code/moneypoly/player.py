@@ -15,7 +15,6 @@ class Player:
         self.in_jail = False
         self.jail_turns = 0
         self.get_out_of_jail_cards = 0
-        self.is_eliminated = False
 
 
     def add_money(self, amount):
