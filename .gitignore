@@ -2,3 +2,6 @@
 DASS Assignment 2.pdf
 QuickCart System.md
 quickcart_image_x86
+__pycache__/
+*.py[cod]
+*$py.class

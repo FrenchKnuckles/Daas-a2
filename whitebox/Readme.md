@@ -147,3 +147,74 @@ moneypoly\ui.py:69:4: W0702: No exception type(s) specified (bare-except)
 
 -----------------------------------
 Your code has been rated at 9.11/10
+
+
+# pytest output
+
+============================== test session starts ==============================
+
+platform win32 -- Python 3.11.15, pytest-9.0.1, pluggy-1.6.0 -- C:\Users\parth\.conda\envs\ml\python.exe
+
+cachedir: .pytest_cache
+
+rootdir: C:\Users\parth\OneDrive\Documents\College Stuff\Sem4\DAAS\Ass-2\whitebox
+
+plugins: anyio-4.9.0, typeguard-4.4.4
+
+collected 22 items                  
+
+tests/test_whitebox_moneypoly.py::test_bank_pay_out_edges_and_insufficient PASSED 
+
+tests/test_whitebox_moneypoly.py::test_bank_loan_tracking PASSED
+
+tests/test_whitebox_moneypoly.py::test_card_deck_draw_cycles_and_peek PASSED
+
+tests/test_whitebox_moneypoly.py::test_card_deck_empty_returns_none PASSED 
+
+tests/test_whitebox_moneypoly.py::test_player_add_deduct_negative_raises PASSED
+
+tests/test_whitebox_moneypoly.py::test_player_move_wraps_and_collects_go_salary PASSED
+
+tests/test_whitebox_moneypoly.py::test_player_go_to_jail_sets_state PASSED
+
+tests/test_whitebox_moneypoly.py::test_property_mortgage_unmortgage_cycle PASSED
+
+tests/test_whitebox_moneypoly.py::test_property_is_available_states PASSED 
+
+tests/test_whitebox_moneypoly.py::test_board_tile_and_lookup_and_purchasable_branches PASSED 
+
+tests/test_whitebox_moneypoly.py::test_ui_safe_int_input_valid_and_invalid PASSED
+
+tests/test_whitebox_moneypoly py::test_handle_property_tile_branches_buy_auction_skip_owner_and_rent PASSED 
+
+tests/test_whitebox_moneypoly.py::test_game_buy_property_success_and_failure PASSED
+
+tests/test_whitebox_moneypoly.py::test_game_trade_success_and_failure PASSED 
+
+tests/test_whitebox_moneypoly.py::test_game_auction_no_bids_and_winner PASSED 
+
+tests/test_whitebox_moneypoly.py::test_game_play_turn_jail_and_doubles_branches PASSED 
+
+tests/test_whitebox_moneypoly.py::test_handle_jail_turn_card_pay_and_mandatory_release PASSED 
+
+tests/test_whitebox_moneypoly.py::test_apply_card_action_branches PASSED 
+
+tests/test_whitebox_moneypoly.py::test_find_winner_should_pick_highest_net_worth XFAIL (Known logic issue: winner selection currently uses min net worth)  
+
+tests/test_whitebox_moneypoly.py::test_pay_rent_should_transfer_to_owner XFAIL (Known logic issue: rent is not credited to owner in pay_rent)
+
+tests/test_whitebox_moneypoly.py::test_property_group_all_owned_by_requires_full_group XFAIL (Known logic issue: full-group check uses any instead of all)
+
+tests/test_whitebox_moneypoly.py::test_dice_roll_should_use_six_sided_bounds XFAIL (Known logic issue: dice currently rolls 1..5 instead of 1..6) 
+
+============================== short test summary info ============================== 
+
+XFAIL tests/test_whitebox_moneypoly.py::test_find_winner_should_pick_highest_net_worth - Known logic issue: winner selection currently uses min net worth
+
+XFAIL tests/test_whitebox_moneypoly.py::test_pay_rent_should_transfer_to_owner - Known logic issue: rent is not credited to owner in pay_rent
+
+XFAIL tests/test_whitebox_moneypoly py::test_property_group_all_owned_by_requires_full_group - Known logic issue: full-group check uses any instead of all 
+
+XFAIL tests/test_whitebox_moneypoly.py::test_dice_roll_should_use_six_sided_bounds - Known logic issue: dice currently rolls 1..5 instead of 1..6
+
+============================ 18 passed, 4 xfailed in 0.15s ===========================
