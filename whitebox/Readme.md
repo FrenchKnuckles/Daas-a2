@@ -1,0 +1,14 @@
+# Pylint direct outputs
+
+## Main.py
+
+### Module main
+main.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+
+main.py:4:0: C0116: Missing function or method docstring (missing-function-docstring)
+
+main.py:11:0: C0116: Missing function or method docstring (missing-function-docstring)
+
+--- 
+Your code has been rated at 8.24/10
+

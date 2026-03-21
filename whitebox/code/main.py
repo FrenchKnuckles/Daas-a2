@@ -1,3 +1,4 @@
+"""Main file for running the MoneyPoly game"""
 from moneypoly.game import Game
 
 
