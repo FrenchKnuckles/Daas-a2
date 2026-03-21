@@ -5,18 +5,14 @@ class Property:
 
     FULL_GROUP_MULTIPLIER = 2
 
-    def __init__(self, name, position, price, base_rent, group=None):
+    def __init__(self, name, position, price, base_rent):
         self.name = name
         self.position = position
         self.price = price
         self.base_rent = base_rent
         self.owner = None
         self.is_mortgaged = False
-
-        # Register with the group immediately on creation
-        self.group = group
-        if group is not None and self not in group.properties:
-            group.properties.append(self)
+        self.group = None
 
     @property
     def mortgage_value(self):
