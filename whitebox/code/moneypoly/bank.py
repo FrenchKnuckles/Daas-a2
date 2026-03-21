@@ -1,6 +1,5 @@
 """Bank operations for MoneyPoly"""
 
-import math
 from moneypoly.config import BANK_STARTING_FUNDS
 
 class Bank:
