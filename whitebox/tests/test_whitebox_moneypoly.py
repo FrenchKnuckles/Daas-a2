@@ -709,7 +709,6 @@ def test_bank_collect_negative_amount_should_not_reduce_funds():
     assert bank.get_balance() == before
 
 
-@pytest.mark.xfail(reason="Docstring says loan reduces bank funds, but funds are unchanged")
 def test_bank_give_loan_should_reduce_bank_funds(game_two_players):
     bank = Bank()
     player = game_two_players.players[0]
@@ -720,7 +719,6 @@ def test_bank_give_loan_should_reduce_bank_funds(game_two_players):
     assert bank.get_balance() == before - 100
 
 
-@pytest.mark.xfail(reason="Empty group should not count as fully owned")
 def test_empty_property_group_all_owned_by_returns_false():
     group = PropertyGroup("Empty", "gray")
     owner = Player("Owner")
