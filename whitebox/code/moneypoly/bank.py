@@ -19,6 +19,8 @@ class Bank:
         Receive funds into the bank (taxes, fines, auction proceeds, etc.).
         Negative amounts are silently ignored.
         """
+        if amount < 0:
+            return
         self._funds += amount
         self._total_collected += amount
 

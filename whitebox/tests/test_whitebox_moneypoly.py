@@ -645,13 +645,11 @@ def test_player_move_past_go_should_collect_salary():
 
     assert player.balance == start + GO_SALARY
 
-@pytest.mark.xfail(reason="Constructor currently allows fewer than 2 players")
 def test_game_init_with_single_player_should_raise_value_error():
     with pytest.raises(ValueError):
         Game(["Solo"])
 
 
-@pytest.mark.xfail(reason="Buy path currently rejects exact-balance purchase")
 def test_buy_property_with_exact_balance_should_succeed(game_two_players):
     game = game_two_players
     player = game.players[0]
@@ -665,7 +663,6 @@ def test_buy_property_with_exact_balance_should_succeed(game_two_players):
     assert prop.owner == player
 
 
-@pytest.mark.xfail(reason="Trade currently allows zero-cash transfers")
 def test_trade_with_zero_cash_should_fail(game_two_players):
     game = game_two_players
     seller, buyer = game.players
@@ -676,7 +673,6 @@ def test_trade_with_zero_cash_should_fail(game_two_players):
     assert game.trade(seller, buyer, prop, 0) is False
 
 
-@pytest.mark.xfail(reason="Trade currently allows negative-cash transfers")
 def test_trade_with_negative_cash_should_fail(game_two_players):
     game = game_two_players
     seller, buyer = game.players
@@ -687,7 +683,6 @@ def test_trade_with_negative_cash_should_fail(game_two_players):
     assert game.trade(seller, buyer, prop, -10) is False
 
 
-@pytest.mark.xfail(reason="Voluntary jail fine path does not deduct player balance")
 def test_handle_jail_turn_voluntary_fine_deducts_player_balance(monkeypatch, game_two_players):
     game = game_two_players
     player = game.players[0]
@@ -705,7 +700,6 @@ def test_handle_jail_turn_voluntary_fine_deducts_player_balance(monkeypatch, gam
     assert player.balance == 300 - JAIL_FINE
 
 
-@pytest.mark.xfail(reason="Docstring says negatives ignored, but collect applies negative amounts")
 def test_bank_collect_negative_amount_should_not_reduce_funds():
     bank = Bank()
     before = bank.get_balance()
