@@ -339,7 +339,6 @@ def test_apply_card_action_branches(monkeypatch, game_two_players):
     assert other.balance == 990
 
 
-@pytest.mark.xfail(reason="Known logic issue: winner selection currently uses min net worth")
 def test_find_winner_should_pick_highest_net_worth(game_two_players):
     game = game_two_players
     game.players[0].balance = 2000
@@ -347,7 +346,6 @@ def test_find_winner_should_pick_highest_net_worth(game_two_players):
     assert game.find_winner() == game.players[0]
 
 
-@pytest.mark.xfail(reason="Known logic issue: rent is not credited to owner in pay_rent")
 def test_pay_rent_should_transfer_to_owner(game_two_players):
     game = game_two_players
     payer, owner = game.players
@@ -361,7 +359,6 @@ def test_pay_rent_should_transfer_to_owner(game_two_players):
     assert owner.balance > 500
 
 
-@pytest.mark.xfail(reason="Known logic issue: full-group check uses any instead of all")
 def test_property_group_all_owned_by_requires_full_group():
     group = PropertyGroup("Test", "test")
     p1 = Property("A", 1, 100, 10)
@@ -376,7 +373,6 @@ def test_property_group_all_owned_by_requires_full_group():
     assert group.all_owned_by(owner) is False
 
 
-@pytest.mark.xfail(reason="Known logic issue: dice currently rolls 1..5 instead of 1..6")
 def test_dice_roll_should_use_six_sided_bounds(monkeypatch):
     from moneypoly import dice as dice_module
 
