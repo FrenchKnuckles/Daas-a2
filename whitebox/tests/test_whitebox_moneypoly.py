@@ -391,3 +391,262 @@ def test_dice_roll_should_use_six_sided_bounds(monkeypatch):
     d.roll()
 
     assert seen == [(1, 6), (1, 6)]
+
+
+def test_move_and_resolve_go_to_jail_tile(game_two_players):
+    game = game_two_players
+    player = game.players[0]
+    player.position = 29
+
+    game._move_and_resolve(player, 1)
+
+    assert player.in_jail is True
+
+
+def test_move_and_resolve_income_tax_deducts_and_collects(game_two_players):
+    game = game_two_players
+    player = game.players[0]
+    player.position = 3
+    player.balance = 1000
+    bank_before = game.bank.get_balance()
+
+    game._move_and_resolve(player, 1)
+
+    assert player.balance == 800
+    assert game.bank.get_balance() == bank_before + 200
+
+
+def test_move_and_resolve_luxury_tax_deducts_and_collects(game_two_players):
+    game = game_two_players
+    player = game.players[0]
+    player.position = 37
+    player.balance = 1000
+    bank_before = game.bank.get_balance()
+
+    game._move_and_resolve(player, 1)
+
+    assert player.balance == 925
+    assert game.bank.get_balance() == bank_before + 75
+
+
+def test_move_and_resolve_free_parking_no_balance_change(game_two_players):
+    game = game_two_players
+    player = game.players[0]
+    player.position = 19
+    player.balance = 777
+    bank_before = game.bank.get_balance()
+
+    game._move_and_resolve(player, 1)
+
+    assert player.balance == 777
+    assert game.bank.get_balance() == bank_before
+
+
+def test_move_and_resolve_chance_draw_and_apply_called(monkeypatch, game_two_players):
+    game = game_two_players
+    player = game.players[0]
+    player.position = 6
+    called = {"apply": 0}
+
+    monkeypatch.setattr(game.decks["chance"], "draw", lambda: {"description": "c", "action": "pay", "value": 1})
+
+    def fake_apply(_player, _card):
+        called["apply"] += 1
+
+    monkeypatch.setattr(game, "_apply_card", fake_apply)
+    game._move_and_resolve(player, 1)
+
+    assert called["apply"] == 1
+
+
+def test_move_and_resolve_community_draw_and_apply_called(monkeypatch, game_two_players):
+    game = game_two_players
+    player = game.players[0]
+    player.position = 1
+    called = {"apply": 0}
+
+    monkeypatch.setattr(game.decks["community_chest"], "draw", lambda: {"description": "c", "action": "collect", "value": 1})
+
+    def fake_apply(_player, _card):
+        called["apply"] += 1
+
+    monkeypatch.setattr(game, "_apply_card", fake_apply)
+    game._move_and_resolve(player, 1)
+
+    assert called["apply"] == 1
+
+
+def test_move_and_resolve_railroad_branch_without_property(monkeypatch, game_two_players):
+    game = game_two_players
+    player = game.players[0]
+    player.position = 4
+    called = {"handle": 0}
+
+    def fake_handle(_player, _prop):
+        called["handle"] += 1
+
+    monkeypatch.setattr(game, "_handle_property_tile", fake_handle)
+    game._move_and_resolve(player, 1)
+
+    assert called["handle"] == 0
+
+
+def test_move_and_resolve_property_branch_calls_handler(monkeypatch, game_two_players):
+    game = game_two_players
+    player = game.players[0]
+    player.position = 0
+    called = {"handle": 0}
+
+    def fake_handle(_player, _prop):
+        called["handle"] += 1
+
+    monkeypatch.setattr(game, "_handle_property_tile", fake_handle)
+    game._move_and_resolve(player, 1)
+
+    assert called["handle"] == 1
+
+
+def test_move_and_resolve_blank_tile_path(monkeypatch, game_two_players):
+    game = game_two_players
+    player = game.players[0]
+    player.position = 11
+    called = {"check": 0}
+
+    def fake_check(_player):
+        called["check"] += 1
+
+    monkeypatch.setattr(game, "_check_bankruptcy", fake_check)
+    game._move_and_resolve(player, 1)
+
+    assert called["check"] == 1
+
+
+def test_pay_rent_returns_when_mortgaged(game_two_players):
+    game = game_two_players
+    payer, owner = game.players
+    prop = game.board.get_property_at(1)
+    prop.owner = owner
+    prop.is_mortgaged = True
+    payer.balance = 500
+    owner.balance = 500
+
+    game.pay_rent(payer, prop)
+
+    assert payer.balance == 500
+    assert owner.balance == 500
+
+
+def test_pay_rent_returns_when_no_owner(game_two_players):
+    game = game_two_players
+    payer = game.players[0]
+    prop = game.board.get_property_at(1)
+    prop.owner = None
+    payer.balance = 500
+
+    game.pay_rent(payer, prop)
+
+    assert payer.balance == 500
+
+
+def test_mortgage_property_non_owner_fails(game_two_players):
+    game = game_two_players
+    owner, other = game.players
+    prop = game.board.get_property_at(1)
+    prop.owner = owner
+
+    assert game.mortgage_property(other, prop) is False
+
+
+def test_mortgage_property_already_mortgaged_fails(game_two_players):
+    game = game_two_players
+    owner = game.players[0]
+    prop = game.board.get_property_at(1)
+    prop.owner = owner
+    prop.is_mortgaged = True
+
+    assert game.mortgage_property(owner, prop) is False
+
+
+def test_unmortgage_property_non_owner_fails(game_two_players):
+    game = game_two_players
+    owner, other = game.players
+    prop = game.board.get_property_at(1)
+    prop.owner = owner
+    prop.is_mortgaged = True
+
+    assert game.unmortgage_property(other, prop) is False
+
+
+def test_unmortgage_property_not_mortgaged_fails(game_two_players):
+    game = game_two_players
+    owner = game.players[0]
+    prop = game.board.get_property_at(1)
+    prop.owner = owner
+    prop.is_mortgaged = False
+
+    assert game.unmortgage_property(owner, prop) is False
+
+
+def test_unmortgage_property_insufficient_balance_fails(game_two_players):
+    game = game_two_players
+    owner = game.players[0]
+    prop = game.board.get_property_at(1)
+    prop.owner = owner
+    prop.is_mortgaged = True
+    owner.balance = 1
+
+    assert game.unmortgage_property(owner, prop) is False
+
+
+def test_apply_card_unknown_action_no_effect(game_two_players):
+    game = game_two_players
+    player = game.players[0]
+    before = (player.balance, player.position, player.in_jail, player.get_out_of_jail_cards)
+
+    game._apply_card(player, {"description": "unknown", "action": "no_op", "value": 99})
+
+    after = (player.balance, player.position, player.in_jail, player.get_out_of_jail_cards)
+    assert before == after
+
+
+def test_apply_card_move_to_property_invokes_property_handler(monkeypatch, game_two_players):
+    game = game_two_players
+    player = game.players[0]
+    called = {"handle": 0}
+
+    def fake_handle(_player, _prop):
+        called["handle"] += 1
+
+    monkeypatch.setattr(game, "_handle_property_tile", fake_handle)
+    game._apply_card(player, {"description": "move", "action": "move_to", "value": 1})
+
+    assert called["handle"] == 1
+
+
+def test_check_bankruptcy_releases_assets_and_removes_player(game_two_players):
+    game = game_two_players
+    player = game.players[0]
+    prop = game.board.get_property_at(1)
+    prop.owner = player
+    prop.is_mortgaged = True
+    player.add_property(prop)
+    player.balance = 0
+    game.current_index = 1
+
+    game._check_bankruptcy(player)
+
+    assert player not in game.players
+    assert prop.owner is None
+    assert prop.is_mortgaged is False
+    assert game.current_index == 0
+
+
+@pytest.mark.xfail(reason="Potential logic gap: passing Go (without landing exactly on 0) may not award salary")
+def test_player_move_past_go_should_collect_salary():
+    player = Player("P1")
+    player.position = 39
+    start = player.balance
+
+    player.move(2)
+
+    assert player.balance == start + GO_SALARY

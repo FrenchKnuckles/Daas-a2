@@ -151,6 +151,11 @@ Your code has been rated at 9.11/10
 
 # pytest output
 
+
+## Code used
+
+        python -m pytest tests -rxX -vv
+
 ============================== test session starts ==============================
 
 platform win32 -- Python 3.11.15, pytest-9.0.1, pluggy-1.6.0 -- C:\Users\parth\.conda\envs\ml\python.exe
