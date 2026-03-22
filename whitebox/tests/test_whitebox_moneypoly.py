@@ -636,8 +636,6 @@ def test_check_bankruptcy_releases_assets_and_removes_player(game_two_players):
     assert prop.is_mortgaged is False
     assert game.current_index == 0
 
-
-@pytest.mark.xfail(reason="Potential logic gap: passing Go (without landing exactly on 0) may not award salary")
 def test_player_move_past_go_should_collect_salary():
     player = Player("P1")
     player.position = 39
@@ -646,3 +644,114 @@ def test_player_move_past_go_should_collect_salary():
     player.move(2)
 
     assert player.balance == start + GO_SALARY
+
+@pytest.mark.xfail(reason="Constructor currently allows fewer than 2 players")
+def test_game_init_with_single_player_should_raise_value_error():
+    with pytest.raises(ValueError):
+        Game(["Solo"])
+
+
+@pytest.mark.xfail(reason="Buy path currently rejects exact-balance purchase")
+def test_buy_property_with_exact_balance_should_succeed(game_two_players):
+    game = game_two_players
+    player = game.players[0]
+    prop = game.board.get_property_at(1)
+    player.balance = prop.price
+
+    result = game.buy_property(player, prop)
+
+    assert result is True
+    assert player.balance == 0
+    assert prop.owner == player
+
+
+@pytest.mark.xfail(reason="Trade currently allows zero-cash transfers")
+def test_trade_with_zero_cash_should_fail(game_two_players):
+    game = game_two_players
+    seller, buyer = game.players
+    prop = game.board.get_property_at(1)
+    prop.owner = seller
+    seller.add_property(prop)
+
+    assert game.trade(seller, buyer, prop, 0) is False
+
+
+@pytest.mark.xfail(reason="Trade currently allows negative-cash transfers")
+def test_trade_with_negative_cash_should_fail(game_two_players):
+    game = game_two_players
+    seller, buyer = game.players
+    prop = game.board.get_property_at(1)
+    prop.owner = seller
+    seller.add_property(prop)
+
+    assert game.trade(seller, buyer, prop, -10) is False
+
+
+@pytest.mark.xfail(reason="Voluntary jail fine path does not deduct player balance")
+def test_handle_jail_turn_voluntary_fine_deducts_player_balance(monkeypatch, game_two_players):
+    game = game_two_players
+    player = game.players[0]
+    player.in_jail = True
+    player.get_out_of_jail_cards = 0
+    player.jail_turns = 0
+    player.balance = 300
+
+    monkeypatch.setattr(ui, "confirm", lambda _msg: True)
+    monkeypatch.setattr(game, "_move_and_resolve", lambda *_args, **_kwargs: None)
+    game.dice = StubDice(roll_value=4)
+
+    game._handle_jail_turn(player)
+
+    assert player.balance == 300 - JAIL_FINE
+
+
+@pytest.mark.xfail(reason="Docstring says negatives ignored, but collect applies negative amounts")
+def test_bank_collect_negative_amount_should_not_reduce_funds():
+    bank = Bank()
+    before = bank.get_balance()
+
+    bank.collect(-100)
+
+    assert bank.get_balance() == before
+
+
+@pytest.mark.xfail(reason="Docstring says loan reduces bank funds, but funds are unchanged")
+def test_bank_give_loan_should_reduce_bank_funds(game_two_players):
+    bank = Bank()
+    player = game_two_players.players[0]
+    before = bank.get_balance()
+
+    bank.give_loan(player, 100)
+
+    assert bank.get_balance() == before - 100
+
+
+@pytest.mark.xfail(reason="Empty group should not count as fully owned")
+def test_empty_property_group_all_owned_by_returns_false():
+    group = PropertyGroup("Empty", "gray")
+    owner = Player("Owner")
+
+    assert group.all_owned_by(owner) is False
+
+
+def test_run_ends_immediately_when_one_player_left(monkeypatch):
+    game = Game(["A", "B"])
+    game.players = [game.players[0]]
+
+    called = {"turn": 0}
+
+    def fake_play_turn():
+        called["turn"] += 1
+
+    monkeypatch.setattr(game, "play_turn", fake_play_turn)
+    game.run()
+
+    assert called["turn"] == 0
+
+
+def test_interactive_menu_exits_on_zero_choice(monkeypatch, game_two_players):
+    game = game_two_players
+    player = game.players[0]
+    monkeypatch.setattr(ui, "safe_int_input", lambda *_args, **_kwargs: 0)
+
+    game.interactive_menu(player)
