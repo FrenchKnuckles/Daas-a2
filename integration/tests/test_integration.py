@@ -11,6 +11,8 @@ Modules under test:
   vehicle_condition <-> crew_management(mechanic locking)
   mission_planning  <-> crew_management
 """
+
+
 import pytest
 from code import registration
 from code import crew_management
@@ -757,3 +759,378 @@ class TestEndToEndScenarios:
         assert "damage" in event_types
         assert "repair_started" in event_types
         assert "repair_completed" in event_types
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 9. Race Entry Fee <-> Inventory (cash deduction)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestRaceEntryFeeInventoryIntegration:
+    """
+    Why: Races with an entry fee must deduct from the cash balance when a
+    driver enters. This validates the financial link between race_management
+    and inventory that is separate from prize payouts.
+    """
+
+    def test_entry_fee_deducted_from_balance_on_race_entry(self):
+        """
+        Scenario: Create a race with a $500 entry fee; enter one driver.
+        Modules: race_management -> inventory.deduct_cash
+        Expected: Cash balance decreases by $500.
+        """
+        driver = _make_driver("Sven")
+        inventory.add_item("cars", "SvenCar", 1)
+        race = race_management.create_race("FeeRace", "Docks", entry_fee=500.0)
+        initial_cash = inventory.get_cash_balance()
+        race_management.enter_race(race["id"], driver["id"], "SvenCar")
+        assert inventory.get_cash_balance() == round(initial_cash - 500.0, 2)
+
+    def test_multiple_drivers_each_pay_entry_fee(self):
+        """
+        Scenario: Two drivers enter the same race with a $200 entry fee.
+        Modules: race_management -> inventory.deduct_cash (x2)
+        Expected: Cash balance decreases by $400 total.
+        """
+        d1 = _make_driver("Tilda")
+        d2 = _make_driver("Ulrich")
+        inventory.add_item("cars", "TC1", 1)
+        inventory.add_item("cars", "UC1", 1)
+        race = race_management.create_race("DoubleFeeRace", "Harbour", entry_fee=200.0)
+        initial_cash = inventory.get_cash_balance()
+        race_management.enter_race(race["id"], d1["id"], "TC1")
+        race_management.enter_race(race["id"], d2["id"], "UC1")
+        assert inventory.get_cash_balance() == round(initial_cash - 400.0, 2)
+
+    def test_zero_entry_fee_does_not_change_balance(self):
+        """
+        Scenario: Race with no entry fee; entering should not touch the balance.
+        Modules: race_management -> inventory
+        Expected: Cash balance unchanged after entry.
+        """
+        driver = _make_driver("Viola")
+        inventory.add_item("cars", "VCar", 1)
+        race = race_management.create_race("FreeEntryRace", "Suburbs", entry_fee=0.0)
+        initial_cash = inventory.get_cash_balance()
+        race_management.enter_race(race["id"], driver["id"], "VCar")
+        assert inventory.get_cash_balance() == initial_cash
+
+    def test_insufficient_funds_blocks_race_entry(self):
+        """
+        Scenario: Drain the cash balance, then attempt to enter a race with a fee.
+        Modules: inventory.deduct_cash -> race_management
+        Expected: ValueError — not enough funds to pay the entry fee.
+        """
+        driver = _make_driver("Walt")
+        inventory.add_item("cars", "WCar", 1)
+        # Drain most of the balance
+        current = inventory.get_cash_balance()
+        inventory.deduct_cash(current - 50.0)
+        race = race_management.create_race("ExpensiveRace", "Uphill", entry_fee=500.0)
+        with pytest.raises(ValueError, match="Insufficient"):
+            race_management.enter_race(race["id"], driver["id"], "WCar")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 10. Driver Re-entry After Race Completion
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestDriverReentryAfterRace:
+    """
+    Why: Once a race completes, all drivers must be freed so they can enter
+    subsequent races. This confirms the availability cycle works end-to-end
+    across two consecutive race lifecycles.
+    """
+
+    def test_driver_can_enter_second_race_after_first_completes(self):
+        """
+        Scenario: Driver completes race 1; enters and races in race 2.
+        Modules: results -> crew_management -> race_management
+        Expected: Driver successfully enters race 2 with no availability error.
+        """
+        driver = _make_driver("Xavier")
+        inventory.add_item("cars", "XCar1", 1)
+        inventory.add_item("cars", "XCar2", 1)
+
+        race1 = race_management.create_race("Race1X", "North Loop")
+        race_management.enter_race(race1["id"], driver["id"], "XCar1")
+        race_management.start_race(race1["id"])
+        results.record_result(race1["id"], [driver["id"]], prize_pool=0.0)
+
+        assert registration.get_member(driver["id"])["is_available"]
+
+        race2 = race_management.create_race("Race2X", "South Loop")
+        updated = race_management.enter_race(race2["id"], driver["id"], "XCar2")
+        assert driver["id"] in updated["drivers"]
+
+    def test_driver_locked_in_race1_cannot_enter_race2(self):
+        """
+        Scenario: Driver is in an active race; try to enter a second race.
+        Modules: race_management (availability check)
+        Expected: ValueError — driver is unavailable.
+        """
+        driver = _make_driver("Yuki")
+        inventory.add_item("cars", "YCar1", 1)
+        inventory.add_item("cars", "YCar2", 1)
+
+        race1 = race_management.create_race("ActiveRace1", "East Side")
+        race_management.enter_race(race1["id"], driver["id"], "YCar1")
+
+        race2 = race_management.create_race("ActiveRace2", "West Side")
+        with pytest.raises(ValueError, match="unavailable"):
+            race_management.enter_race(race2["id"], driver["id"], "YCar2")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 11. Three-Driver Podium — Earnings and Leaderboard
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestThreeDriverPodium:
+    """
+    Why: The payout multipliers apply to the top 3 places. With only two drivers
+    most tests never exercise 3rd-place logic. These cases confirm the full
+    podium — 1st (100%), 2nd (50%), 3rd (25%) — is handled correctly in both
+    inventory cash and leaderboard stats.
+    """
+
+    def _setup_three_driver_race(self, race_name):
+        d1 = _make_driver("Anya")
+        d2 = _make_driver("Bruno")
+        d3 = _make_driver("Cara")
+        for car, drv in [("AC1", d1), ("BC1", d2), ("CC1", d3)]:
+            inventory.add_item("cars", car, 1)
+        race = race_management.create_race(race_name, "Grand Circuit")
+        race_management.enter_race(race["id"], d1["id"], "AC1")
+        race_management.enter_race(race["id"], d2["id"], "BC1")
+        race_management.enter_race(race["id"], d3["id"], "CC1")
+        race_management.start_race(race["id"])
+        return race, d1, d2, d3
+
+    def test_third_place_receives_correct_payout(self):
+        """
+        Scenario: Three-driver race with a $1000 prize pool.
+        Modules: results -> inventory
+        Expected: 3rd-place driver earns $250 (25% of pool).
+        """
+        race, d1, d2, d3 = self._setup_three_driver_race("PodiumRace1")
+        result = results.record_result(
+            race["id"], [d1["id"], d2["id"], d3["id"]], prize_pool=1000.0
+        )
+        assert result["payouts"][d3["id"]] == 250.0
+
+    def test_third_place_gets_podium_on_leaderboard(self):
+        """
+        Scenario: Three-driver race; 3rd-place driver should have a podium entry.
+        Modules: results -> leaderboard
+        Expected: 3rd driver podiums == 1, wins == 0.
+        """
+        race, d1, d2, d3 = self._setup_three_driver_race("PodiumRace2")
+        results.record_result(
+            race["id"], [d1["id"], d2["id"], d3["id"]], prize_pool=600.0
+        )
+        stats = leaderboard.get_driver_stats(d3["id"])
+        assert stats["podiums"] == 1
+        assert stats["wins"] == 0
+
+    def test_fourth_place_receives_no_payout(self):
+        """
+        Scenario: Four drivers; 4th place finisher gets no prize money.
+        Modules: results -> inventory
+        Expected: 4th-place driver absent from payouts dict.
+        """
+        d4 = _make_driver("Dave")
+        inventory.add_item("cars", "DC1", 1)
+
+        race, d1, d2, d3 = self._setup_three_driver_race("PodiumRace3")
+        # Manually add d4 into the already-created race
+        races = race_management.get_all_races()
+        race_id = race["id"]
+        race_management.enter_race(race_id, d4["id"], "DC1")
+
+        result = results.record_result(
+            race_id,
+            [d1["id"], d2["id"], d3["id"], d4["id"]],
+            prize_pool=1000.0,
+        )
+        assert d4["id"] not in result["payouts"]
+
+    def test_total_cash_added_equals_sum_of_all_payouts(self):
+        """
+        Scenario: Three-driver race; verify total cash added = 1st + 2nd + 3rd payouts.
+        Modules: results -> inventory
+        Expected: Balance delta == 1000 + 500 + 250 == 1750.
+        """
+        race, d1, d2, d3 = self._setup_three_driver_race("PodiumRace4")
+        initial = inventory.get_cash_balance()
+        results.record_result(
+            race["id"], [d1["id"], d2["id"], d3["id"]], prize_pool=1000.0
+        )
+        assert inventory.get_cash_balance() == round(initial + 1750.0, 2)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 12. Leaderboard Edge Cases
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestLeaderboardEdgeCases:
+    """
+    Why: The leaderboard is queried externally and must handle drivers who
+    have never raced as well as ties in wins broken by podiums and earnings.
+    """
+
+    def test_stats_for_never_raced_driver_raises_keyerror(self):
+        """
+        Scenario: Call get_driver_stats on a registered driver with no race history.
+        Modules: leaderboard
+        Expected: KeyError — no entry exists yet for this driver.
+        """
+        driver = _make_driver("Zoe")
+        with pytest.raises(KeyError):
+            leaderboard.get_driver_stats(driver["id"])
+
+    def test_leaderboard_tiebreak_by_podiums(self):
+        """
+        Scenario: Two drivers with equal wins; the one with more podiums ranks higher.
+        Modules: results -> leaderboard.get_leaderboard
+        Expected: Driver with more podiums appears first.
+        """
+        d1 = _make_driver("Finn")
+        d2 = _make_driver("Greta")
+        d3 = _make_driver("Hans")
+
+        # Race 1: d1 wins, d2 second
+        for car in ["F1", "G1", "H1"]:
+            inventory.add_item("cars", car, 1)
+        r1 = race_management.create_race("TieRace1", "Loop A")
+        race_management.enter_race(r1["id"], d1["id"], "F1")
+        race_management.enter_race(r1["id"], d2["id"], "G1")
+        race_management.start_race(r1["id"])
+        results.record_result(r1["id"], [d1["id"], d2["id"]], prize_pool=0.0)
+
+        # Race 2: d2 wins, d3 second — d1 sits this one out
+        for car in ["G2", "H2"]:
+            inventory.add_item("cars", car, 1)
+        r2 = race_management.create_race("TieRace2", "Loop B")
+        race_management.enter_race(r2["id"], d2["id"], "G2")
+        race_management.enter_race(r2["id"], d3["id"], "H2")
+        race_management.start_race(r2["id"])
+        results.record_result(r2["id"], [d2["id"], d3["id"]], prize_pool=0.0)
+
+        # d1: 1 win, 1 podium  |  d2: 1 win, 2 podiums
+        board = leaderboard.get_leaderboard()
+        ids_in_order = [e["member_id"] for e in board]
+        assert ids_in_order.index(d2["id"]) < ids_in_order.index(d1["id"])
+
+    def test_reset_leaderboard_clears_all_entries(self):
+        """
+        Scenario: Run a race, reset the leaderboard, check it is empty.
+        Modules: leaderboard.reset_leaderboard
+        Expected: get_leaderboard() returns an empty list after reset.
+        """
+        race, d1, d2 = _full_race_setup("ResetRace", "D1r", "C1r", "C2r")
+        results.record_result(race["id"], [d1["id"], d2["id"]], prize_pool=100.0)
+        leaderboard.reset_leaderboard()
+        assert leaderboard.get_leaderboard() == []
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 13. Mission Completion Unlocks Follow-on Actions
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestMissionCompletionFollowOn:
+    """
+    Why: After a mission ends, the freed crew should be immediately usable
+    for races or other missions. These tests confirm the state machine
+    resets correctly and the system does not leave stale locks behind.
+    """
+
+    def test_driver_can_race_after_mission_completes(self):
+        """
+        Scenario: Driver finishes a delivery mission then enters a race.
+        Modules: mission_planning -> crew_management -> race_management
+        Expected: Driver successfully enters race after mission is completed.
+        """
+        driver = _make_driver("Isla")
+        m = mission_planning.create_mission("delivery", "Quick run", [driver["id"]])
+        mission_planning.complete_mission(m["id"])
+
+        inventory.add_item("cars", "IslaRacer", 1)
+        race = race_management.create_race("PostMissionRace", "Highway")
+        updated = race_management.enter_race(race["id"], driver["id"], "IslaRacer")
+        assert driver["id"] in updated["drivers"]
+
+    def test_same_member_can_run_sequential_missions(self):
+        """
+        Scenario: Driver completes mission 1, then immediately starts mission 2.
+        Modules: mission_planning -> crew_management -> mission_planning
+        Expected: Second mission created with status 'active'.
+        """
+        driver = _make_driver("Jett")
+        m1 = mission_planning.create_mission("delivery", "First drop", [driver["id"]])
+        mission_planning.complete_mission(m1["id"])
+
+        m2 = mission_planning.create_mission("delivery", "Second drop", [driver["id"]])
+        assert m2["status"] == "active"
+        assert not registration.get_member(driver["id"])["is_available"]
+
+    def test_completing_already_completed_mission_raises_error(self):
+        """
+        Scenario: Attempt to complete a mission that is already marked completed.
+        Modules: mission_planning
+        Expected: ValueError — mission is not 'active'.
+        """
+        driver = _make_driver("Kira")
+        m = mission_planning.create_mission("delivery", "One-time job", [driver["id"]])
+        mission_planning.complete_mission(m["id"])
+        with pytest.raises(ValueError, match="not 'active'"):
+            mission_planning.complete_mission(m["id"])
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 14. Race Result Car Damage Syncs to Inventory
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestResultCarDamageSyncsInventory:
+    """
+    Why: When record_result receives a car_damage dict, it calls
+    inventory.set_car_condition. This test class specifically validates that
+    the inventory record is updated through the results module — a different
+    path from vehicle_condition.apply_damage.
+    """
+
+    def test_car_condition_in_inventory_updated_via_result(self):
+        """
+        Scenario: Race ends; winner's car recorded as 'damaged' in car_damage.
+        Modules: results -> inventory.set_car_condition
+        Expected: inventory car record shows 'damaged' condition.
+        """
+        race, d1, d2 = _full_race_setup("DamageSync1", "DS1", "DSC1", "DSC2")
+        results.record_result(
+            race["id"],
+            [d1["id"], d2["id"]],
+            prize_pool=0.0,
+            car_damage={d1["id"]: "damaged"},
+        )
+        car_in_inv = inventory.get_item("cars", "DSC1")
+        assert car_in_inv["condition"] == "damaged"
+
+    def test_undamaged_cars_keep_original_condition(self):
+        """
+        Scenario: Race ends; only one car is listed in car_damage.
+        Modules: results -> inventory
+        Expected: The car NOT in car_damage retains its original condition.
+        """
+        inventory.add_item("cars", "CleanA", 1, condition="good")
+        inventory.add_item("cars", "CleanB", 1, condition="good")
+        d1 = _make_driver("Liam")
+        d2 = _make_driver("Maya")
+        race = race_management.create_race("PartialDamage", "Track Z")
+        race_management.enter_race(race["id"], d1["id"], "CleanA")
+        race_management.enter_race(race["id"], d2["id"], "CleanB")
+        race_management.start_race(race["id"])
+        results.record_result(
+            race["id"],
+            [d1["id"], d2["id"]],
+            prize_pool=0.0,
+            car_damage={d1["id"]: "worn"},
+        )
+        assert inventory.get_item("cars", "CleanB")["condition"] == "good"

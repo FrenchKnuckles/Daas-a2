@@ -17,24 +17,12 @@ All data is stored in memory via `data_store.py` using a shared in-memory dictio
 
 ## How to Run the Tests
 
-### 1. Install dependencies
-
-```bash
-pip install pytest
-```
-
-### 2. Run all tests
+### Run all tests
 
 Run from inside the `integration/` directory:
 
 ```bash
 python -m pytest tests/test_integration.py -v
-```
-
-### 3. Run a specific test class
-
-```bash
-python -m pytest tests/test_integration.py::TestVehicleConditionCrewIntegration -v
 ```
 
 ## Rules Enforced
