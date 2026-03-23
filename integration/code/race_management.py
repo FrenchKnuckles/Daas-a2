@@ -2,7 +2,7 @@ import uuid
 from data_store import load, save
 from registration import get_member
 from crew_management import set_availability
-from inventory import car_exists
+from inventory import car_exists, deduct_cash
 
 RACE_STATUSES = {"scheduled", "in_progress", "completed", "cancelled"}
 
@@ -45,7 +45,7 @@ def enter_race(race_id: str, member_id: str, car_name: str) -> dict:
         raise KeyError(f"No race found with ID '{race_id}'.")
 
     race = races[race_id]
-    if race["status"] != "scheduled":
+    if race["status"] not in {"scheduled", "in_progress"}:
         raise ValueError(
             f"Race '{race['name']}' is '{race['status']}' and cannot accept new entries."
         )
@@ -65,6 +65,10 @@ def enter_race(race_id: str, member_id: str, car_name: str) -> dict:
 
     if not car_exists(car_name):
         raise ValueError(f"Car '{car_name}' is not available in inventory.")
+
+    entry_fee = race.get("entry_fee", 0.0)
+    if entry_fee > 0:
+        deduct_cash(entry_fee)
 
     race["drivers"].append(member_id)
     race["cars"].append(car_name)
