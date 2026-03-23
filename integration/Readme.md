@@ -1,5 +1,73 @@
 # Integration Testing
 
+## Diagram
+
+For the control flow diagram, the graph consists of all modules except for data_store.py connections as it is currently used as the data storing mechanism, so load and save are called in almost every function. Instead below is the list of all the functions that call load and save in data_store.py
+
+### Functions calling `load`
+
+These functions have arrows pointing to `load`:
+
+- add_cash()
+- add_item()
+- apply_damage()
+- assign_role()
+- complete_mission()
+- complete_repair()
+- create_mission()
+- create_race()
+- deduct_cash()
+- get_all_conditions()
+- get_all_members()
+- get_all_missions()
+- get_all_races()
+- get_available_by_role()
+- get_cash_balance()
+- get_condition()
+- get_condition_log()
+- get_crew_summary()
+- get_driver_stats()
+- get_full_inventory()
+- get_leaderboard()
+- get_member()
+- get_members_by_role()
+- get_mission()
+- get_race()
+- get_results_for_race()
+- is_race_eligible()
+- list_items()
+- record_result()
+- register_car_condition()
+- register_member()
+- set_availability()
+- set_car_condition()
+- set_skill_level()
+- start_repair()
+- update_leaderboard()
+
+
+### Functions calling `save`
+
+These functions have arrows pointing to `save`:
+
+- add_item()
+- apply_damage()
+- assign_role()
+- complete_mission()
+- complete_repair()
+- create_mission()
+- create_race()
+- deduct_cash()
+- record_result()
+- register_car_condition()
+- register_member()
+- reset_leaderboard()
+- set_availability()
+- set_skill_level()
+- start_repair()
+- unregister_member()
+- update_leaderboard()
+
 ## Modules
 
 | # | Module | Role |
